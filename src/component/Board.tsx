@@ -264,7 +264,7 @@ function Board({
         const interval = setTimeout(() => {
           clickBox(0);
           setIsLocked(false);
-        }, 1000);
+        }, 5000);
         setIntervalClick(interval)
         setTurn("עכשיו תור השחקן השני");
       } else setTurn("עכשיו תורך");
