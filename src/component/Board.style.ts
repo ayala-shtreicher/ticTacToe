@@ -21,13 +21,17 @@ const item: SxProps = {
 const button: SxProps = {
  marginRight:-5
 }
+const form: SxProps = {
+display:"inline-block"
+}
 const textField: SxProps = {
- marginRight:1
+ marginRight:1,
+ width: '10ch'
 }
 const buttonback: SxProps = {
   zIndex: 9999,
   top:140,
-  left:"30%"
+  left:"20%"
 }
 const container: SxProps = {
   color: "red",
@@ -37,7 +41,7 @@ const container: SxProps = {
 const modal: SxProps = {
   position: 'absolute' as 'absolute',
   top: '50%',
-  left: '50%',
+  left: '48%',
   transform: 'translate(-50%, -50%)',
   width: "50vh",
   bgcolor: "rgba(0,0,0,0)",
@@ -49,5 +53,5 @@ const modal: SxProps = {
 }
 
 export default {
-  grid, title, singleBox, item, button, textField, buttonback, modal, container
+  grid, title, singleBox, item, button, textField, buttonback, modal, container,form
 }

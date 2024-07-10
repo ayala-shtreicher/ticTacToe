@@ -1,4 +1,4 @@
-import { Box, Button, Grid, TextField } from "@mui/material";
+import { Box, Button, FormControl, Grid, TextField } from "@mui/material";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { ShapePlayer, NumPlayer, HistoryItem } from "./MatBoard";
@@ -127,7 +127,8 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
     else Swal.fire({ text: "ניתן לאתחל רק עם מספר שלם", confirmButtonColor: "red" });
     if (num < 3 || num > 15) Swal.fire({ text: "ערך גדול מדי", confirmButtonColor: "red" });
   };
-  const initializeBoard = () => {
+  const initializeBoard = (e: React.FormEvent) => {
+    e.preventDefault();
     setBoardSize(inputValue);
     setMatBoard(initialMat(inputValue));
   };
@@ -142,8 +143,12 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
       <Grid item xs={3} sx={BoardStyle.item}>
         <Button variant="contained" color="error" onClick={() => resetGame(setMatBoard, boardSize, setCurrentPlayer)} sx={BoardStyle.button}>התחל מחדש</Button>
         <ButtonBack history={history} setHistory={setHistory} matBoard={matBoard} setMatBoard={setMatBoard} intervalClick={intervalClick} setOpenModalLocked={setOpenModalLocked} openModalWinner={openModalWinner} currentPlayer={currentPlayer} setCurrentPlayer={setCurrentPlayer} />
-        <TextField type="number" id="outlined-basic" label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField} />
-        <Button variant="contained" color="error" onClick={initializeBoard} sx={BoardStyle.button}>אתחל לוח</Button><br />
+        {/* <TextField type="number" id="outlined-basic" label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField} />
+        <Button variant="contained" color="error" onClick={initializeBoard} sx={BoardStyle.button}>אתחל לוח</Button><br /> */}
+        <FormControl component="form" sx={BoardStyle.form} onSubmit={initializeBoard}>
+          <TextField type="number"  label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField}/>
+          <Button variant="contained" color="error" type="submit"> אתחל לוח </Button>
+        </FormControl>
       </Grid>
     </Grid>
   )
