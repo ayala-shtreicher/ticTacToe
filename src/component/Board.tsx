@@ -1,15 +1,16 @@
-import { Box, Button, FormControl, Grid, TextField } from "@mui/material";
-import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Box, Button, Grid } from "@mui/material";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { ShapePlayer, NumPlayer, HistoryItem } from "./MatBoard";
-import { handleClose, handleOpen, hasValueInMatrix, hasZeroInMatrix, initialMat, randomNumberInRange, resetGame } from "../util";
+import { handleClose, handleOpen, hasValueInMatrix, hasZeroInMatrix, randomNumberInRange, resetGame } from "../util";
 import ButtonBack from "./ButtonBack";
 import InitializeBoard from "./InitializeBoard";
 import BoardStyle from "./Board.style";
+import MyForm from "./MyForm";
 
 type Props = {
   boardSize: number;
-  setBoardSize: (num: number) => void,
+  setBoardSize: (num: number) => void;
   matBoard: number[][];
   setMatBoard: (mat: number[][]) => void;
   currentPlayer: NumPlayer;
@@ -104,9 +105,9 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
     handleOpen(setOpenModalLocked)
     intervalClick = setTimeout(() => {
       const arrayOfFree = [];
-      for (let i = 0; i < matBoard.length; i++)
-        for (let j = 0; j < matBoard[i].length; j++)
-          if (!matBoard[i][j]) arrayOfFree.push(i * 3 + j + 1);
+      for (let i = 0; i < matBoard.length; i++) 
+        for (let j = 0; j < matBoard[i].length; j++) 
+          if (!matBoard[i][j]) arrayOfFree.push(i * boardSize + j + 1);
       const randomNumber = randomNumberInRange(0, arrayOfFree.length - 1);
       setPlayer2({ ...player2, num: arrayOfFree[randomNumber] });
       handleClose(setOpenModalLocked)
@@ -118,20 +119,8 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
       if (!hasZeroInMatrix(matBoard)) tie()
       else if (currentPlayer === NumPlayer.two && !openModalLocked) computerTurn();
       else setTurnMessage("עכשיו תורך")
-    return () => clearInterval(intervalClick);
+    return () => { clearInterval(intervalClick) };
   }, [currentPlayer]);
-  const [inputValue, setInputValue] = useState<number>(boardSize);
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const num = Number(event.target.value);
-    if (!(num % 1)) setInputValue(num);
-    else Swal.fire({ text: "ניתן לאתחל רק עם מספר שלם", confirmButtonColor: "red" });
-    if (num < 3 || num > 15) Swal.fire({ text: "ערך גדול מדי", confirmButtonColor: "red" });
-  };
-  const initializeBoard = (e: React.FormEvent) => {
-    e.preventDefault();
-    setBoardSize(inputValue);
-    setMatBoard(initialMat(inputValue));
-  };
   return (
     <Grid container spacing={0} sx={BoardStyle.grid} direction="column">
       <h1 style={BoardStyle.title}>{turnMessage}</h1>
@@ -143,12 +132,7 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
       <Grid item xs={3} sx={BoardStyle.item}>
         <Button variant="contained" color="error" onClick={() => resetGame(setMatBoard, boardSize, setCurrentPlayer)} sx={BoardStyle.button}>התחל מחדש</Button>
         <ButtonBack history={history} setHistory={setHistory} matBoard={matBoard} setMatBoard={setMatBoard} intervalClick={intervalClick} setOpenModalLocked={setOpenModalLocked} openModalWinner={openModalWinner} currentPlayer={currentPlayer} setCurrentPlayer={setCurrentPlayer} />
-        {/* <TextField type="number" id="outlined-basic" label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField} />
-        <Button variant="contained" color="error" onClick={initializeBoard} sx={BoardStyle.button}>אתחל לוח</Button><br /> */}
-        <FormControl component="form" sx={BoardStyle.form} onSubmit={initializeBoard}>
-          <TextField type="number"  label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField}/>
-          <Button variant="contained" color="error" type="submit"> אתחל לוח </Button>
-        </FormControl>
+        <MyForm boardSize={boardSize} setBoardSize={setBoardSize} setMatBoard={setMatBoard} setCurrentPlayer={setCurrentPlayer}/>
       </Grid>
     </Grid>
   )
