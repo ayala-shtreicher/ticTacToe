@@ -105,8 +105,8 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
     handleOpen(setOpenModalLocked)
     intervalClick = setTimeout(() => {
       const arrayOfFree = [];
-      for (let i = 0; i < matBoard.length; i++) 
-        for (let j = 0; j < matBoard[i].length; j++) 
+      for (let i = 0; i < matBoard.length; i++)
+        for (let j = 0; j < matBoard[i].length; j++)
           if (!matBoard[i][j]) arrayOfFree.push(i * boardSize + j + 1);
       const randomNumber = randomNumberInRange(0, arrayOfFree.length - 1);
       setPlayer2({ ...player2, num: arrayOfFree[randomNumber] });
@@ -132,7 +132,7 @@ export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, 
       <Grid item xs={3} sx={BoardStyle.item}>
         <Button variant="contained" color="error" onClick={() => resetGame(setMatBoard, boardSize, setCurrentPlayer)} sx={BoardStyle.button}>התחל מחדש</Button>
         <ButtonBack history={history} setHistory={setHistory} matBoard={matBoard} setMatBoard={setMatBoard} intervalClick={intervalClick} setOpenModalLocked={setOpenModalLocked} openModalWinner={openModalWinner} currentPlayer={currentPlayer} setCurrentPlayer={setCurrentPlayer} />
-        <MyForm boardSize={boardSize} setBoardSize={setBoardSize} setMatBoard={setMatBoard} setCurrentPlayer={setCurrentPlayer}/>
+        <MyForm boardSize={boardSize} setBoardSize={setBoardSize} setMatBoard={setMatBoard} setCurrentPlayer={setCurrentPlayer} />
       </Grid>
     </Grid>
   )
