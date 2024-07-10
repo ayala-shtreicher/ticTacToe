@@ -1,518 +1,150 @@
-import { Box, Button, Container, Grid, TextField, css, styled } from "@mui/material";
+import { Box, Button, Grid, TextField } from "@mui/material";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
-import clsx from 'clsx';
-import { Modal as BaseModal } from '@mui/base/Modal';
-import ArrowCircleLeftIcon from '@mui/icons-material/ArrowCircleLeft';
-import BackHandIcon from '@mui/icons-material/BackHand';
-import XIcon from '@mui/icons-material/X';
-import CircleIcon from '@mui/icons-material/Circle';
-import '../App.css'
 import Swal from "sweetalert2";
+import { ShapePlayer, NumPlayer, HistoryItem } from "./MatBoard";
+import { handleClose, handleOpen, hasValueInMatrix, hasZeroInMatrix, initialMat, randomNumberInRange, resetGame } from "../util";
+import ButtonBack from "./ButtonBack";
+import InitializeBoard from "./InitializeBoard";
+import BoardStyle from "./Board.style";
 
 type Props = {
   boardSize: number;
   setBoardSize: (num: number) => void,
   matBoard: number[][];
   setMatBoard: (mat: number[][]) => void;
-  numPlayer: number;
-  setNumPlayer: (num: number) => void;
-  player1: { num: number; shape: string };
-  setPlayer1: Dispatch<SetStateAction<{ num: number; shape: string }>>;
-  player2: { num: number; shape: string };
-  setPlayer2: Dispatch<SetStateAction<{ num: number; shape: string }>>;
+  currentPlayer: NumPlayer;
+  setCurrentPlayer: (num: NumPlayer) => void;
+  player1: { num: NumPlayer; shape: ShapePlayer };
+  setPlayer1: Dispatch<SetStateAction<{ num: NumPlayer; shape: ShapePlayer }>>;
+  player2: { num: NumPlayer; shape: ShapePlayer };
+  setPlayer2: Dispatch<SetStateAction<{ num: NumPlayer; shape: ShapePlayer }>>;
+  setWinner: Dispatch<SetStateAction<string>>;
+  openModalWinner: boolean;
+  openModalLocked: boolean;
+  setOpenModalWinner: (flag: boolean) => void;
+  setOpenModalLocked: (flag: boolean) => void;
 };
-
-type HistoryItem = {
-  i: number;
-  j: number;
-}
-
-function Board({
-  boardSize,
-  setBoardSize,
-  matBoard,
-  setMatBoard,
-  numPlayer,
-  setNumPlayer,
-  player1,
-  setPlayer1,
-  setPlayer2,
-  player2,
-}: Props) {
-
-  const [open, setOpen] = React.useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+export default function Board({ boardSize, setBoardSize, matBoard, setMatBoard, currentPlayer, setCurrentPlayer, player1, setPlayer1, setPlayer2, player2, setWinner, openModalWinner, openModalLocked, setOpenModalWinner, setOpenModalLocked }: Props) {
+  let intervalClick = -1;
+  const checkWinner = () => {
+    const checkLine = (startRow: number, endRow: number, startCol: number, endCol: number, direction: number[]) => {
+      for (let row = startRow; row < endRow; row++) {
+        for (let col = startCol; col < endCol; col++) {
+          let count = 1;
+          let currentValue = matBoard[row][col];
+          if (currentValue === 0) continue;
+          for (let i = 1; i < boardSize; i++) {
+            let nextRow = row + i * direction[0];
+            let nextCol = col + i * direction[1];
+            if (nextRow < 0 || nextRow >= boardSize || nextCol < 0 || nextCol >= boardSize || matBoard[nextRow][nextCol] !== currentValue) {
+              break;
+            }
+            count++;
+            if (count === boardSize) {
+              if (currentValue === 1) setWinner(player1.shape);
+              else setWinner(player2.shape);
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
+    if (checkLine(0, boardSize, 0, boardSize - 1, [0, 1]) ||
+      checkLine(0, boardSize - 1, 0, boardSize, [1, 0]) ||
+      checkLine(0, boardSize - 1, 0, boardSize - 1, [1, 1]) ||
+      checkLine(boardSize - 1, 0, 0, boardSize - 1, [-1, 1])) { handleOpen(setOpenModalWinner); return true; }
+    return false;
+  };
   const [history, setHistory] = useState<HistoryItem[]>([{ i: 0, j: 0 }])
-  const [disableBack, setDisableBack] = useState(true)
-  const [isLocked, setIsLocked] = useState(false);
-  const [clickBack, setClickBack] = useState(false);
-  const [inputValue, setInputValue] = useState(boardSize);
-  const [turn, setTurn] = useState("");
-  const [winner, setWinner] = useState("");
-  const [intervalClick, setIntervalClick] = useState(-1);
-  let flagPlayer2 = false;
-
-// Function to draw a number in a known range
-  const randomNumberInRange = (min: number, max: number) => {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  };
-
-  // Function to check if there is a winner and if there is then who is it
-  const checkWinner = (matrix: number[][], n: number) => {
-    const rows = matrix.length;
-    const cols = matrix[0].length;
-    // Function to check vertical sequences
-    const checkVertical = () => {
-      for (let col = 0; col < cols; col++) {
-        let count = 1;
-        for (let row = 1; row < rows; row++) {
-          if (
-            matrix[row][col] === matrix[row - 1][col] &&
-            matrix[row][col] !== 0
-          ) {
-            count++;
-            if (count === n) {
-              if (matrix[row][col] === 1) setWinner(player1.shape);
-              else setWinner(player2.shape);
-              return true;
-            }
-          } else {
-            count = 1;
-          }
-        }
-      }
-      return false;
-    };
-
-    // Function to check horizontal sequences
-    const checkHorizontal = () => {
-      for (let row = 0; row < rows; row++) {
-        let count = 1;
-        for (let col = 1; col < cols; col++) {
-          if (
-            matrix[row][col] === matrix[row][col - 1] &&
-            matrix[row][col] !== 0
-          ) {
-            count++;
-            if (count === n) {
-              if (matrix[row][col] === 1) setWinner(player1.shape);
-              else setWinner(player2.shape);
-              return true;
-            }
-          } else {
-            count = 1;
-          }
-        }
-      }
-      return false;
-    };
-
-    // Function to check diagonal sequences from top-left to bottom-right
-    const checkDiagonalTopLeftToBottomRight = () => {
-      for (let startRow = 0; startRow <= rows - n; startRow++) {
-        for (let startCol = 0; startCol <= cols - n; startCol++) {
-          let count = 1;
-          for (let i = 1; i < n; i++) {
-            if (
-              matrix[startRow + i][startCol + i] ===
-              matrix[startRow + i - 1][startCol + i - 1] &&
-              matrix[startRow + i][startCol + i] !== 0
-            ) {
-              count++;
-              if (count === n) {
-                if (matrix[startRow + i][startCol + i] === 1)
-                  setWinner(player1.shape);
-                else setWinner(player2.shape);
-                return true;
-              }
-            } else {
-              break;
-            }
-          }
-        }
-      }
-      return false;
-    };
-
-    // Function to check diagonal sequences from top-right to bottom-left
-    const checkDiagonalTopRightToBottomLeft = () => {
-      for (let startRow = 0; startRow <= rows - n; startRow++) {
-        for (let startCol = cols - 1; startCol >= n - 1; startCol--) {
-          let count = 1;
-          for (let i = 1; i < n; i++) {
-            if (
-              matrix[startRow + i][startCol - i] ===
-              matrix[startRow + i - 1][startCol - i + 1] &&
-              matrix[startRow + i][startCol - i] !== 0
-            ) {
-              count++;
-              if (count === n) {
-                if (matrix[startRow + i][startCol - i] === 1)
-                  setWinner(player1.shape);
-                else setWinner(player2.shape);
-                return true;
-              }
-            } else {
-              break;
-            }
-          }
-        }
-      }
-      return false;
-    };
-
-    return (
-      checkVertical() ||
-      checkHorizontal() ||
-      checkDiagonalTopLeftToBottomRight() ||
-      checkDiagonalTopRightToBottomLeft()
-    );
-  };
-
-  // Function for a single button and works according to the player accordingly
-  const clickBox = (id: number) => {
-    if (numPlayer == 2) {
-      do {
-        const randomNumber = randomNumberInRange(1, boardSize * boardSize);
-        if (
-          !matBoard[Math.floor((randomNumber - 1) / boardSize)][
-          (randomNumber - 1) % boardSize
-          ]
-        ) {
-          setPlayer2({ ...player2, num: randomNumber });
-          flagPlayer2 = true;
-        }
-      } while (!flagPlayer2);
-    } else {
-      setPlayer1({ ...player1, num: id });
-    }
-  };
-// Function to player1 action
-  useEffect(() => {
-    if (player1.num !== 0) {
-      let i = Math.floor((player1.num - 1) / boardSize);
-      let j = (player1.num - 1) % boardSize;
-      if (!matBoard[i][j]) {
-        const updatedMatrix = [...matBoard];
-        updatedMatrix[i][j] = 1;
-        setMatBoard(updatedMatrix);
-        setDisableBack(false);
-        setNumPlayer(2);
-        const newHistory = history;
-        newHistory?.push({ i, j })
-        setHistory(newHistory)
-        setClickBack(false);
+  const movePlayer = (num: number) => {
+    let i = Math.floor((num - 1) / boardSize);
+    let j = (num - 1) % boardSize;
+    if (!matBoard[i][j]) {
+      if (currentPlayer === NumPlayer.two) {
+        setMatBoard([...matBoard.slice(0, i), [...matBoard[i].slice(0, j), 2, ...matBoard[i].slice(j + 1)], ...matBoard.slice(i + 1)]);
+        setCurrentPlayer(NumPlayer.one);
       }
       else {
-        Swal.fire({
-          icon: "error",
-          title: "...אופס",
-          text: "המשבצת כבר תפוסה  - אנא תלחץ על משבצת שאינה מלאה",
-          confirmButtonColor: "red"
-        })
+        setMatBoard([...matBoard.slice(0, i), [...matBoard[i].slice(0, j), 1, ...matBoard[i].slice(j + 1)], ...matBoard.slice(i + 1)]);
+        setCurrentPlayer(NumPlayer.two);
       }
-
+      setHistory([...history, { i, j }])
     }
+    else Swal.fire({ icon: "error", title: "...אופס", text: "המשבצת כבר תפוסה  - אנא תלחץ על משבצת שאינה מלאה", confirmButtonColor: "red" })
+  }
+  useEffect(() => {
+    if (player1.num !== NumPlayer.zero) movePlayer(player1.num)
   }, [player1.num]);
-
-  // Function to player2 action
   useEffect(() => {
-    if (player2.num !== 0) {
-      let i = Math.floor((player2.num - 1) / boardSize);
-      let j = (player2.num - 1) % boardSize;
-      if (!matBoard[i][j]) {
-        const updatedMatrix = [...matBoard];
-        updatedMatrix[i][j] = 2;
-        setMatBoard(updatedMatrix);
-        setNumPlayer(1);
-        const newHistory = history;
-        newHistory?.push({ i, j })
-        setHistory(newHistory)
-        setClickBack(false);
-      }
-    }
+    if (player2.num !== NumPlayer.zero) movePlayer(player2.num);
   }, [player2.num]);
-
-  // Function to check who the player is now and what the state of the game is
-  useEffect(() => {
-    if (numPlayer === 0 && !hasValueInMatrix()) {
+  const startGame = () => {
+    if (currentPlayer === NumPlayer.zero && !hasValueInMatrix(matBoard)) {
       const firstPlayer = randomNumberInRange(1, 2);
-      setNumPlayer(firstPlayer);
       if (firstPlayer == 1) {
-        setPlayer1({ ...player1, shape: "X" });
-        setPlayer2({ ...player2, shape: "O" });
+        setCurrentPlayer(NumPlayer.one);
+        setPlayer1({ ...player1, shape: ShapePlayer.x });
+        setPlayer2({ ...player2, shape: ShapePlayer.o });
       } else {
-        setPlayer2({ ...player2, shape: "X" });
-        setPlayer1({ ...player1, shape: "O" });
+        setCurrentPlayer(NumPlayer.two);
+        setPlayer2({ ...player2, shape: ShapePlayer.x });
+        setPlayer1({ ...player1, shape: ShapePlayer.o });
       }
     }
-    if (checkWinner(matBoard, boardSize)) {
-      handleOpen();
-      setDisableBack(true);
-    } else if (!hasZeroInMatrix()) {
-      Swal.fire({ text: "תיקו", confirmButtonColor: "red" }).then(result => {
-        if (result.isConfirmed) {
-          resetGame();
-          setDisableBack(true)
-        }
-      })
-    }
-    else {
-      if (numPlayer == 2 && !checkWinner(matBoard, boardSize)) {
-        setIsLocked(true);
-        const interval = setTimeout(() => {
-          clickBox(0);
-          setIsLocked(false);
-        }, 5000);
-        setIntervalClick(interval)
-        setTurn("עכשיו תור השחקן השני");
-      } else setTurn("עכשיו תורך");
-      return () => {
-        clearInterval(intervalClick);
-      };
-    }
-
-  }, [numPlayer]);
-
+  }
+  const tie = () => {
+    Swal.fire({ text: "תיקו", confirmButtonColor: "red" }).then(result => {
+      if (result.isConfirmed) resetGame(setMatBoard, boardSize, setCurrentPlayer);
+    })
+  }
+  const [turnMessage, setTurnMessage] = useState<string>("");
+  const computerTurn = () => {
+    setTurnMessage("עכשיו תור השחקן השני");
+    handleOpen(setOpenModalLocked)
+    intervalClick = setTimeout(() => {
+      const arrayOfFree = [];
+      for (let i = 0; i < matBoard.length; i++)
+        for (let j = 0; j < matBoard[i].length; j++)
+          if (!matBoard[i][j]) arrayOfFree.push(i * 3 + j + 1);
+      const randomNumber = randomNumberInRange(0, arrayOfFree.length - 1);
+      setPlayer2({ ...player2, num: arrayOfFree[randomNumber] });
+      handleClose(setOpenModalLocked)
+    }, 3000);
+  }
   useEffect(() => {
-    setIsLocked(false);
-    clearInterval(intervalClick);
-  }, [clickBack])
-
-  useEffect(() => {
-    if (!open && numPlayer)
-      resetGame();
-  }, [open])
-
-  const hasZeroInMatrix = () => {
-    for (let i = 0; i < boardSize; i++) {
-      for (let j = 0; j < boardSize; j++) {
-        if (matBoard[i][j] === 0) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-  const hasValueInMatrix = () => {
-    for (let i = 0; i < boardSize; i++) {
-      for (let j = 0; j < boardSize; j++) {
-        if (matBoard[i][j]) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-
-  const resetGame = () => {
-    setMatBoard(
-      Array(boardSize)
-        .fill(0)
-        .map(() => Array(boardSize).fill(0))
-    );
-    setNumPlayer(0);
-  };
-  // Function to update the game after clicking the step-back button
-  const stepBack = () => {
-    if (history.length > 1) {
-      let i = history[history.length - 1].i;
-      let j = history[history.length - 1].j;
-      const updatedMatrix = [...matBoard];
-      updatedMatrix[i][j] = 0;
-      updatedMatrix[history[history.length - 2].i][history[history.length - 2].j] = 0;
-      setMatBoard(updatedMatrix);
-      const updatedHistory = history.slice(0, -2);
-      setHistory(updatedHistory);
-      setClickBack(true);
-    }
-  };
-
+    startGame();
+    if (!checkWinner())
+      if (!hasZeroInMatrix(matBoard)) tie()
+      else if (currentPlayer === NumPlayer.two && !openModalLocked) computerTurn();
+      else setTurnMessage("עכשיו תורך")
+    return () => clearInterval(intervalClick);
+  }, [currentPlayer]);
+  const [inputValue, setInputValue] = useState<number>(boardSize);
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const num = Number(event.target.value);
-    if (!(num % 1))
-      setInputValue(num);
-    else
-      Swal.fire({ text: "ניתן לאתחל רק עם מספר שלם", confirmButtonColor: "red" });
+    if (!(num % 1)) setInputValue(num);
+    else Swal.fire({ text: "ניתן לאתחל רק עם מספר שלם", confirmButtonColor: "red" });
+    if (num < 3 || num > 15) Swal.fire({ text: "ערך גדול מדי", confirmButtonColor: "red" });
   };
-
   const initializeBoard = () => {
     setBoardSize(inputValue);
-    setMatBoard(Array(inputValue).fill(0).map(() => Array(inputValue).fill(0)));
+    setMatBoard(initialMat(inputValue));
   };
-
-  const buttonStepBack = () => {
-    return <Button variant="contained" color="error" disabled={disableBack} onClick={stepBack} className="button-return"><ArrowCircleLeftIcon></ArrowCircleLeftIcon>חזור צעד</Button>
-  };
-  
-  const createBoard = () => {
-    let index = 0;
-    const arrBoxes = [];
-    for (let i = 0; i < boardSize; i++) {
-      for (let j = 0; j < boardSize; j++, index++) {
-        arrBoxes.push(
-          <Box className="single-box"
-            key={index}
-            onClick={(
-              (id) => () =>
-                clickBox(id + 1)
-            )(index)}
-            sx={{
-              border: "2px solid grey",
-              height: 100,
-              width: 100
-            }}
-          >
-            <Container sx={{ color: "red", mt: 3.5, mr: -1 }}>
-              {matBoard[Math.floor(index / boardSize)][index % boardSize] == 0
-                ? ""
-                : matBoard[Math.floor(index / boardSize)][index % boardSize] == 1 && player1.shape == "X"
-                  ? <XIcon fontSize="large"></XIcon>
-                  : matBoard[Math.floor(index / boardSize)][index % boardSize] == 2 && player2.shape == "X"
-                    ? <XIcon fontSize="large"></XIcon> : <CircleIcon fontSize="large"></CircleIcon>
-              }
-            </Container>
-          </Box>
-        );
-      }
-    }
-    return arrBoxes;
-  };
-
   return (
-    <>
-      <Grid className="grid"
-        container
-        spacing={0}
-        direction="column"
-        alignItems="center"
-        justifyContent="center"
-      >
-        {isLocked && (
-          <div className="screen-lock">
-            <div className="screen-lock-message">
-              <h2><BackHandIcon></BackHandIcon> אנא המתן </h2>
-              <iframe src="https://lottie.host/embed/28074572-4b32-49a8-a89e-63dd5fbe5b4e/GU2lY3mOtC.json" style={{ background: 'white', width: 200, height: 200 }}></iframe><br />
-              {buttonStepBack()}
-            </div>
-          </div>
-        )}
-        <h1
-          style={{ textAlign: "center", marginTop: 50, marginLeft: -80 }}
-        >{turn}</h1>
-        <Grid item xs={3}>
-          <Box
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              maxWidth: (boardSize + 1) * 100
-
-            }}
-          >
-            {createBoard()}
-          </Box>
-        </Grid>
-        <Grid item xs={3} className="grid" sx={{ mr: 2 }}>
-          <Button variant="contained" color="error" onClick={resetGame} sx={{ m: 5 }}>התחל מחדש</Button>
-          {buttonStepBack()}<br />
-          <TextField type="number" id="outlined-basic" label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={{ mr: 1 }} />
-          <Button variant="contained" color="error" onClick={initializeBoard} sx={{ mr: 10, mt: 0.2 }}>אתחל לוח</Button><br />
-        </Grid>
+    <Grid container spacing={0} sx={BoardStyle.grid} direction="column">
+      <h1 style={BoardStyle.title}>{turnMessage}</h1>
+      <Grid item xs={3}>
+        <Box sx={BoardStyle.singleBox} maxWidth={(boardSize * 10) + 10 + "vh"}>
+          <InitializeBoard matBoard={matBoard} boardSize={boardSize} player1={player1} setPlayer1={setPlayer1} player2={player2} />
+        </Box>
       </Grid>
-      <Modal
-        aria-labelledby="unstyled-modal-title"
-        aria-describedby="unstyled-modal-description"
-        open={open}
-        onClose={handleClose}
-        slots={{ backdrop: StyledBackdrop }}
-      >
-        <ModalContent sx={{ width: 400 }}>
-          <h2 id="unstyled-modal-title" className="modal-title">
-            😊 {winner} :המנצח הוא
-          </h2>
-        </ModalContent>
-      </Modal>
-    </>
-  );
+      <Grid item xs={3} sx={BoardStyle.item}>
+        <Button variant="contained" color="error" onClick={() => resetGame(setMatBoard, boardSize, setCurrentPlayer)} sx={BoardStyle.button}>התחל מחדש</Button>
+        <ButtonBack history={history} setHistory={setHistory} matBoard={matBoard} setMatBoard={setMatBoard} intervalClick={intervalClick} setOpenModalLocked={setOpenModalLocked} openModalWinner={openModalWinner} currentPlayer={currentPlayer} setCurrentPlayer={setCurrentPlayer} />
+        <TextField type="number" id="outlined-basic" label="גודל הלוח" variant="outlined" value={inputValue} onChange={handleInputChange} size="small" sx={BoardStyle.textField} />
+        <Button variant="contained" color="error" onClick={initializeBoard} sx={BoardStyle.button}>אתחל לוח</Button><br />
+      </Grid>
+    </Grid>
+  )
 }
-
-const Backdrop = React.forwardRef<
-  HTMLDivElement,
-  { open?: boolean; className: string }
->((props, ref) => {
-  const { open, className, ...other } = props;
-  return (
-    <div
-      className={clsx({ 'base-Backdrop-open': open }, className)}
-      ref={ref}
-      {...other}
-    />
-  );
-});
-
-const grey = {
-  50: '#F3F6F9',
-  100: '#E5EAF2',
-  200: '#DAE2ED',
-  300: '#C7D0DD',
-  400: '#B0B8C4',
-  500: '#9DA8B7',
-  600: '#6B7A90',
-  700: '#434D5B',
-  800: '#303740',
-  900: '#1C2025',
-};
-
-const Modal = styled(BaseModal)`
-        position: fixed;
-        z-index: 1300;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        `;
-
-const StyledBackdrop = styled(Backdrop)`
-        z-index: -1;
-        position: fixed;
-        inset: 0;
-        background-color: rgb(0 0 0 / 0.5);
-        -webkit-tap-highlight-color: transparent;
-        `;
-
-const ModalContent = styled('div')(
-  ({ theme }) => css`
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-weight: 500;
-        text-align: start;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        overflow: hidden;
-        background-color: ${theme.palette.mode === 'dark' ? grey[900] : '#fff'};
-        border-radius: 8px;
-        border: 1px solid ${theme.palette.mode === 'dark' ? grey[700] : grey[200]};
-        box-shadow: 0 4px 12px
-        ${theme.palette.mode === 'dark' ? 'rgb(0 0 0 / 0.5)' : 'rgb(0 0 0 / 0.2)'};
-        padding: 24px;
-        color: ${theme.palette.mode === 'dark' ? grey[50] : grey[900]};
-
-        & .modal-title {
-          margin: 0;
-        line-height: 1.5rem;
-        margin-bottom: 8px;
-    }
-
-        & .modal-description {
-          margin: 0;
-        line-height: 1.5rem;
-        font-weight: 400;
-        color: ${theme.palette.mode === 'dark' ? grey[400] : grey[800]};
-        margin-bottom: 4px;
-    }
-        `,
-);
-
-export default Board;
